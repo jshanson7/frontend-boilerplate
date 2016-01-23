@@ -1,15 +1,24 @@
 
-import { createStore, applyMiddleware } from 'redux'
+import { createStore, applyMiddleware, compose } from 'redux'
 import { syncHistory } from 'redux-simple-router'
 import { browserHistory } from 'react-router'
 
 import { logger } from '../middleware'
 import rootReducer from '../reducers'
 
+const finalCreateStore = process.env.NODE_ENV === 'development'
+  ? compose(
+    require('../containers/DevTools').default.instrument(),
+    require('redux-devtools').persistState(
+      window.location.href.match(/[?&]debug_session=([^&]+)\b/)
+    )
+  )(createStore)
+  : createStore
+
 export default function configure(initialState) {
   const create = window.devToolsExtension
-    ? window.devToolsExtension()(createStore)
-    : createStore
+    ? window.devToolsExtension()(finalCreateStore)
+    : finalCreateStore
 
   const createStoreWithMiddleware = applyMiddleware(
     logger,
