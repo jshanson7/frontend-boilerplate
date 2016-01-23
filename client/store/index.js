@@ -6,26 +6,25 @@ import { browserHistory } from 'react-router'
 import { logger } from '../middleware'
 import rootReducer from '../reducers'
 
-const finalCreateStore = process.env.NODE_ENV === 'development'
-  ? compose(
-    require('../containers/DevTools').default.instrument(),
-    require('redux-devtools').persistState(
-      window.location.href.match(/[?&]debug_session=([^&]+)\b/)
-    )
-  )(createStore)
-  : createStore
-
 export default function configure(initialState) {
-  const create = window.devToolsExtension
-    ? window.devToolsExtension()(finalCreateStore)
-    : finalCreateStore
+  let create = createStore
 
-  const createStoreWithMiddleware = applyMiddleware(
-    logger,
-    syncHistory(browserHistory)
-  )(create)
+  if (process.env.NODE_ENV === 'development') {
+    create = compose(
+      require('../containers/DevTools').default.instrument(),
+      require('redux-devtools').persistState(
+        window.location.href.match(/[?&]debug_session=([^&]+)\b/)
+      )
+    )(create)
+  }
 
-  const store = createStoreWithMiddleware(rootReducer, initialState)
+  if (window.devToolsExtension) {
+    create = window.devToolsExtension()(create)
+  }
+
+  create = applyMiddleware(logger, syncHistory(browserHistory))(create)
+
+  const store = create(rootReducer, initialState)
 
   if (module.hot) {
     module.hot.accept('../reducers', () => {
